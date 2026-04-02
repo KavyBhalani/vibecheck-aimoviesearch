@@ -45,11 +45,9 @@
     <div id="results" class="w-full max-w-4xl grid gap-6 pb-12"></div>
 
     <script>
-        // --- 1. PASTE YOUR HUGGING FACE DIRECT URL HERE ---
+        // ---  HUGGING FACE DIRECT URL  ---
         const API_URL = "https://kavy1445-semantic-movie-search.hf.space/search";
         
-        // --- 2. PASTE YOUR TMDB API KEY HERE ---
-
         async function searchMovies() {
             const prompt = document.getElementById('promptInput').value;
             if (!prompt) return;
@@ -58,7 +56,7 @@
             document.getElementById('loading').classList.remove('hidden');
 
             try {
-                // Your Hugging Face backend now returns the movie titles, scores, TMDB posters AND descriptions all at once!
+                // Hugging Face backend now returns the movie titles, scores, TMDB posters AND descriptions all at once!
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -70,7 +68,7 @@
                 
                 document.getElementById('loading').classList.add('hidden');
                 
-                // Directly render the results from your backend!
+                // Directly render the results from backend!
                 renderResults(data.recommendations, prompt);
 
             } catch (error) {
