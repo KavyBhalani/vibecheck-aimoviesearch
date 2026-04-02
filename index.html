@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeCheck | AI Movie Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .highlight { background-color: rgba(56, 189, 248, 0.3); color: #38bdf8; font-weight: 600; padding: 0 4px; border-radius: 4px; }
+        .movie-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .movie-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.2); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6">
+
+    <!-- Header & Search Box -->
+    <div class="w-full max-w-3xl mt-12 mb-10 text-center">
+        <h1 class="text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+            VibeCheck
+        </h1>
+        <p class="text-slate-400 text-lg mb-8">Describe your mood. We'll find the mathematical movie match.</p>
+        
+        <div class="glass flex items-center p-2 rounded-full shadow-lg relative">
+            <input type="text" id="promptInput" 
+                class="w-full bg-transparent border-none outline-none text-white px-6 py-3 text-lg placeholder-slate-500"
+                placeholder="e.g., A rainy Sunday in a coffee shop but with a dark sci-fi twist..."
+                onkeypress="if(event.key === 'Enter') searchMovies()">
+            <button id="searchBtn" onclick="searchMovies()" 
+                class="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center transition ml-2">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="hidden text-center text-blue-400 my-8">
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x mb-4"></i>
+        <p class="text-slate-300">Consulting the Vector Space...</p>
+    </div>
+
+    <!-- Results Container -->
+    <div id="results" class="w-full max-w-4xl grid gap-6 pb-12"></div>
+
+    <script>
+        // --- 1. PASTE YOUR HUGGING FACE DIRECT URL HERE ---
+        const API_URL = "https://kavy1445-semantic-movie-search.hf.space/search";
+        
+        // --- 2. PASTE YOUR TMDB API KEY HERE ---
+
+        async function searchMovies() {
+            const prompt = document.getElementById('promptInput').value;
+            if (!prompt) return;
+
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('loading').classList.remove('hidden');
+
+            try {
+                // Your Hugging Face backend now returns the movie titles, scores, TMDB posters AND descriptions all at once!
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, top_k: 5 })
+                });
+
+                if (!response.ok) throw new Error("Backend API error.");
+                const data = await response.json();
+                
+                document.getElementById('loading').classList.add('hidden');
+                
+                // Directly render the results from your backend!
+                renderResults(data.recommendations, prompt);
+
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('results').innerHTML = `<p class="text-red-400 text-center">Error: ${error.message}</p>`;
+            }
+        }
+
+        function renderResults(movies, userPrompt) {
+            const container = document.getElementById('results');
+            
+            movies.forEach(movie => {
+                const matchPercentage = Math.round(movie.similarity_score * 100);
+                const highlightedDesc = highlightText(movie.description, userPrompt);
+
+                const card = `
+                    <div class="glass movie-card rounded-2xl overflow-hidden flex flex-col md:flex-row">
+                        <img src="${movie.poster}" alt="${movie.title}" class="w-full md:w-48 md:h-72 object-cover bg-slate-800">
+                        <div class="p-6 flex flex-col justify-between flex-grow">
+                            <div>
+                                <div class="flex justify-between items-start mb-4">
+                                    <h2 class="text-2xl font-bold text-white pr-4">${movie.rank}. ${movie.title}</h2>
+                                    <span class="bg-blue-900/50 text-blue-300 text-sm font-bold px-3 py-1 rounded-full border border-blue-500/50 whitespace-nowrap">
+                                        ${matchPercentage}% Match
+                                    </span>
+                                </div>
+                                <p class="text-slate-300 leading-relaxed text-sm md:text-base line-clamp-5">
+                                    ${highlightedDesc}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        }
+
+        function highlightText(text, prompt) {
+            const ignoreWords = ['a', 'an', 'the', 'in', 'on', 'with', 'but', 'i', 'want', 'movie', 'that', 'feels', 'like', 'and', 'or', 'of'];
+            const wordsToHighlight = prompt.split(/[^\w]+/).filter(w => w.length > 2 && !ignoreWords.includes(w.toLowerCase()));
+            
+            let result = text;
+            wordsToHighlight.forEach(word => {
+                const regex = new RegExp(`\\b(${word})\\b`, 'gi');
+                result = result.replace(regex, `<span class="highlight">$1</span>`);
+            });
+            return result;
+        }
+    </script>
+</body>
+</html>
